@@ -77,8 +77,18 @@ class MonteCarlo:
 
         return portfolio_sims
 
+    def daily_avg(self):
+        return np.mean(self.portfolio_sims, axis=1)
+        
+
     def plot_sim(self):
-        plt.plot(self.portfolio_sims)
+        # Plot the daily return for each simulation
+        plt.plot(self.portfolio_sims, alpha = 0.7,linewidth=1)
+        
+        # Plot the average daily return of each simulation
+        mean_line = np.mean(self.portfolio_sims, axis=1)
+        plt.plot(mean_line, color='red', linewidth=3)
+
         plt.ylabel('Portfolio Value ($)')
         plt.xlabel('Days')
         plt.title('Monte Carlo Simulation')

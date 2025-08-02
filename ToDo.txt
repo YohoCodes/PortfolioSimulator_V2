@@ -1,0 +1,2 @@
+- Calculate mean return for all simulations
+- Create method to optimize mean return by adjusting portfolio weighting
