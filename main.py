@@ -11,3 +11,4 @@ if __name__ == "__main__":
     
     # Run simulation with default settings
     mc.run_sim()
+    mc.plot_sim()

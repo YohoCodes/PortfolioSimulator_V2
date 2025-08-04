@@ -75,7 +75,7 @@ class MonteCarlo:
 
         return annual_rate, total_return
 
-    def run_sim(self, initial_investment=10000, n_sims=200, n_days=100, by='Close', weights=None, log_return=False, vol_drag=False):
+    def run_sim(self, initial_investment=10000, n_sims=200, n_days=100, by='Close', weights=None, log_return=False, vol_drag=True):
         """
         If you want to set the weights, you need to pass in the weights as a list of floats.
         If you want to use the random weights, you can pass in None.
@@ -98,7 +98,8 @@ class MonteCarlo:
             # Calculate volatility drag: 0.5 * variance for each asset
             volatility_drag = 0.5 * np.diag(covMatrix)
             adjusted_mean_returns = meanReturns - volatility_drag
-            print(f"Volatility drag applied. Original mean returns: {meanReturns.values}")
+            self.adjusted_mean_returns = adjusted_mean_returns.values
+            print(f"Volatility drag applied.\nOriginal mean returns: {meanReturns.values}")
             print(f"Adjusted mean returns: {adjusted_mean_returns.values}")
         else:
             adjusted_mean_returns = meanReturns
@@ -164,8 +165,19 @@ class MonteCarlo:
         else:
             print(f"Sample Period: {self.sample_period_in_yrs} years")
             print(f"Sampled from {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}\n")
-        
-        print("Mean Returns:")
+
+        if vol_drag:
+            print(f"Volatility drag applied.\n")
+            print("Adjusted mean returns:")
+            for (ticker, meanReturn) in zip(self.meanReturns.index, self.adjusted_mean_returns):
+                print(f"    {ticker} - {meanReturn*100}%")
+            print("\n")
+
+            print("Original mean returns:")
+
+        else:
+            print("Mean Returns:")
+
         for (ticker, meanReturn) in zip(self.meanReturns.index, self.meanReturns):
             print(f"    {ticker} - {meanReturn*100}%")
         print(50*"*")
@@ -194,13 +206,6 @@ class MonteCarlo:
         print(f"Mean Total Return: {self.mean_total_return*100}%")
         print(f"Median Total Return: {self.median_total_return*100}%")
         print(50*"*")
-        
-        print('\n')
-        print("Displaying portfolio simulations as a matrix. Each row is a day, each column is a simulation.")
-        print("\n")
-        print(portfolio_sims)
-        print("\n")
-        print(50*"*")
 
         return portfolio_sims
 
@@ -226,4 +231,4 @@ if __name__ == '__main__':
 
     sim = MonteCarlo(stocks)
     sim.run_sim()
-    #sim.plot_sim()
+    sim.plot_sim()
