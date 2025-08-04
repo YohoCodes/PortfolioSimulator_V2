@@ -11,17 +11,24 @@ class MonteCarlo:
     2. Run the simulation using the run_sim method.
     """
 
-    def __init__(self, tickers, start_date=dt.date.today()-dt.timedelta(days=365), end_date=dt.date.today()):
+    def __init__(self, tickers, start_date=dt.datetime.now()-dt.timedelta(days=5*365.25), end_date=dt.datetime.now()):
         self.tickers = tickers
+
+        # Convert to string format for yfinance
+        start_str = start_date.strftime('%Y-%m-%d')
+        end_str = end_date.strftime('%Y-%m-%d')
+        
         self.end_date = end_date
-        self.stock_data = yf.download(tickers, start=start_date, end=end_date)
+        self.stock_data = yf.download(tickers, start=start_str, end=end_str)
         self.stock_data.index = pd.to_datetime(self.stock_data.index)
 
         # Check for missing data after start date
         if self.stock_data.isna().values.any():
             # Find the latest index of a row that contains a NaN value
             nan_rows = self.stock_data.isna().any(axis=1)
+            print(nan_rows)
             self.start_date = nan_rows[::-1].idxmax()
+            print(self.start_date)
             print('Missing row data!\n')
             print(f'Using {self.start_date} as start date')
             self.stock_data = self.stock_data.loc[self.start_date:]
@@ -49,6 +56,24 @@ class MonteCarlo:
         weights /= np.sum(weights)
         return weights
 
+    def calculate_annual_rate(self, initial_investment, final_investment, days_passed):
+        # Calculate the total return
+        total_return = final_investment / initial_investment - 1
+        
+        # Convert days to years
+        years = days_passed / 365.25
+        
+        # Calculate the effective annual rate using the compound interest formula
+        # (1 + r)^n = final_value / initial_value
+        # r = (final_value / initial_value)^(1/n) - 1
+        annual_rate = (final_investment / initial_investment) ** (1 / years) - 1
+
+        self.annual_rate = annual_rate
+        self.total_return = total_return
+        self.years = years
+    
+        return annual_rate
+
     def run_sim(self, initial_investment=10000, n_sims=100, n_days=365, by='Close', weights=None):
         """
         If you want to set the weights, you need to pass in the weights as a list of floats.
@@ -56,11 +81,19 @@ class MonteCarlo:
         """
         meanReturns = self.calc_mean(by=by)
         covMatrix = self.calc_covariance_matrix(by=by)
+        self.initial_investment = initial_investment
+        self.n_sims = n_sims
+        self.n_days = n_days
+
+        self.meanReturns = meanReturns
+        self.covMatrix = covMatrix
         meanMatrix = np.full(shape=(n_days, len(self.tickers)), fill_value=meanReturns).T
         portfolio_sims = np.full(shape=(n_days, n_sims), fill_value=0.0)
 
         if weights == None:
             weights = self.gen_weights()
+        
+        self.weights = weights
 
         for sim in range(n_sims):
             # Z is a matrix of random normal variables
@@ -72,14 +105,43 @@ class MonteCarlo:
             portfolio_sims[:, sim] = np.cumprod(np.inner(weights, daily_returns.T)+1)*initial_investment
 
         self.portfolio_sims = portfolio_sims
+        self.mean_final_investment = portfolio_sims[-1].mean()
+        self.sd_final_investment = portfolio_sims[-1].std()
 
+        # Calculate the annualized return
+        self.calculate_annual_rate(self.initial_investment, self.mean_final_investment, self.n_days)
+
+        print("\n")
+        print(50*"*")
+        print("INITIAL CONDITIONS")
+        print(50*"*")
+        print(f"Initial Investment: {self.initial_investment}")
+        print(f"Years Simulated: {self.years}")
+        for (ticker, weight) in zip(self.tickers, self.weights):
+            print(f"Weight of {ticker}: {weight}")
+        print(50*"*")
+
+        print("\n")
+
+        print(50*"*")
+        print("FINAL CONDITIONS")
+        print(50*"*")
+        print(f"Mean Final Investment: {self.mean_final_investment}")
+        print(f"SD Final Investment: {self.sd_final_investment}")
+        print(f"Mean Annual Rate: {self.annual_rate}")
+        print(f"Mean Total Return: {self.total_return}")
+        print(50*"*")
+
+        print('\n')
+        print("Displaying portfolio simulations as a matrix. Each row is a day, each column is a simulation.")
+        print("\n")
         print(portfolio_sims)
+        print("\n")
 
         return portfolio_sims
 
     def daily_avg(self):
         return np.mean(self.portfolio_sims, axis=1)
-        
 
     def plot_sim(self):
         # Plot the daily return for each simulation
@@ -97,8 +159,7 @@ class MonteCarlo:
 if __name__ == '__main__':
 
     stocks = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
-    start = pd.to_datetime('2000-01-01')
 
-    sim = MonteCarlo(stocks, start)
+    sim = MonteCarlo(stocks)
     sim.run_sim()
-    sim.plot_sim()
+    #sim.plot_sim()
