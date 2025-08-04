@@ -11,8 +11,12 @@ class MonteCarlo:
     2. Run the simulation using the run_sim method.
     """
 
-    def __init__(self, tickers, start_date=dt.datetime.now()-dt.timedelta(days=5*365.25), end_date=dt.datetime.now()):
+    def __init__(self, tickers, sample_period_in_yrs=10):
+        
         self.tickers = tickers
+
+        end_date = dt.datetime.now()
+        start_date = end_date - dt.timedelta(days=sample_period_in_yrs*365.25)
 
         # Convert to string format for yfinance
         start_str = start_date.strftime('%Y-%m-%d')
@@ -30,7 +34,7 @@ class MonteCarlo:
             self.start_date = nan_rows[::-1].idxmax()
             print(self.start_date)
             print('Missing row data!\n')
-            print(f'Using {self.start_date} as start date')
+            print(f'Truncating...\nNew start date: {self.start_date}')
             self.stock_data = self.stock_data.loc[self.start_date:]
         else:
             self.start_date = start_date
@@ -74,7 +78,7 @@ class MonteCarlo:
     
         return annual_rate
 
-    def run_sim(self, initial_investment=10000, n_sims=100, n_days=365, by='Close', weights=None):
+    def run_sim(self, initial_investment=10000, n_sims=200, n_days=100, by='Close', weights=None):
         """
         If you want to set the weights, you need to pass in the weights as a list of floats.
         If you want to use the random weights, you can pass in None.
@@ -87,6 +91,9 @@ class MonteCarlo:
 
         self.meanReturns = meanReturns
         self.covMatrix = covMatrix
+
+        # meanMatrix is a matrix where each row contains the mean daily returns for each stock, 
+        # repeated for each day in the simulation.
         meanMatrix = np.full(shape=(n_days, len(self.tickers)), fill_value=meanReturns).T
         portfolio_sims = np.full(shape=(n_days, n_sims), fill_value=0.0)
 
@@ -111,7 +118,14 @@ class MonteCarlo:
         # Calculate the annualized return
         self.calculate_annual_rate(self.initial_investment, self.mean_final_investment, self.n_days)
 
+        print("HISTORICAL MEASUREMENTS")
+        print(50*"*")
+        print("Mean Returns:")
+        for (ticker, meanReturn) in zip(self.meanReturns.index, self.meanReturns):
+            print(f"    {ticker} - {meanReturn*100}%")
+        print(50*"*")
         print("\n")
+
         print(50*"*")
         print("INITIAL CONDITIONS")
         print(50*"*")
