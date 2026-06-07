@@ -1,4 +1,0 @@
-
-- Create method to optimize mean return by adjusting portfolio weighting
-
-- Check the mathmatical logic for the daily return. Results are highly improbable.
